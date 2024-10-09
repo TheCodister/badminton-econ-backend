@@ -26,7 +26,7 @@ class Brand(PyEnum):
 class User(db.Model):
     __tablename__ = 'users'
 
-    UserID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    UserID = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     Username = db.Column(db.String(100), nullable=False)
     mail = db.Column(db.String(255), unique=True, nullable=False)
     Phonenumber = db.Column(db.String(15), nullable=False)

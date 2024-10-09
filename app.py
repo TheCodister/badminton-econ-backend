@@ -46,7 +46,36 @@ def handle_users():
             for user in users
         ]
         return jsonify(users_data), 200
+#     # 4. Route for getting a single user by UUID
+# @app.route('/users/<uuid:user_id>', methods=['GET'])
+# def get_user(user_id):
+#     # Query the user by UUID
+#     user = User.query.filter_by(UserID=user_id).first()
 
+#     if user:
+#         return jsonify({
+#             'UserID': user.UserID,
+#             'Username': user.Username,
+#             'mail': user.mail,
+#             'Phonenumber': user.Phonenumber
+#         }), 200
+#     else:
+#         return jsonify({'message': 'User not found'}), 404
+    
+@app.route('/users/<string:username>', methods=['GET'])
+def get_user_by_name(username):
+    # Query the user by Username
+    user = User.query.filter_by(Username=username).first()
+
+    if user:
+        return jsonify({
+            'UserID': str(user.UserID),  # Convert UUID to string if it's UUID type
+            'Username': user.Username,
+            'mail': user.mail,
+            'Phonenumber': user.Phonenumber
+        }), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
 
 # 3. Routes for Product Models (Racket, Shoes, Shuttlecock)
 
