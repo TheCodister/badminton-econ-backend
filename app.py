@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 from models import Brand, Racket, Shoes, Shuttlecock, User, db
 
@@ -12,7 +13,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:BenCuber%402601@l
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
-
+migrate = Migrate(app, db)  # Initialize Flask-Migrate
 # Create the database tables
 with app.app_context():
     db.create_all()
@@ -89,6 +90,7 @@ def handle_rackets():
         new_racket = Racket(
             ProductID=data['product_id'],
             ProductName=data['product_name'],
+            ImageUrl=data['image_url'],
             Brand=Brand[data['brand']],
             Price=data['price'],
             Description=data['description'],
@@ -115,6 +117,7 @@ def handle_rackets():
             {
                 'ProductID': racket.ProductID,
                 'ProductName': racket.ProductName,
+                'ImageUrl': racket.ImageUrl,
                 'Brand': racket.Brand.value,
                 'Price': str(racket.Price),  # Convert decimal to string for JSON compatibility
                 'Description': racket.Description,

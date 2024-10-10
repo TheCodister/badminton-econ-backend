@@ -38,6 +38,7 @@ class Product(db.Model):
     __abstract__ = True  # This makes it an abstract base class
 
     ProductID = db.Column(db.String(100), primary_key=True)
+    ImageUrl = db.Column(db.String(255), nullable=False)
     ProductName = db.Column(db.String(200), nullable=False)
     Brand = db.Column(db.Enum(Brand), nullable=False)
     Price = db.Column(db.Numeric(10, 2), nullable=False)
@@ -50,14 +51,14 @@ class Product(db.Model):
 # Racket Model
 class Racket(Product):
     __tablename__ = 'rackets'
-
+    
     Line = db.Column(db.String(100), nullable=False)
     Stiffness = db.Column(db.String(100), nullable=False)
     Weight = db.Column(db.String(100), nullable=False)
     Balance = db.Column(db.String(100), nullable=False)
     MaxTension = db.Column(db.String(100), nullable=False)
-    Length = db.Column(db.Numeric(5, 2), nullable=False)
-    Technology = db.Column(JSON, nullable=False)
+    Length = db.Column(db.Numeric(5, 2), nullable=True)
+    Technology = db.Column(JSON, nullable=True)
 
 # Shoes Model
 class Shoes(Product):
