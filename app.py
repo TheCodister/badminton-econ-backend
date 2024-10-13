@@ -1,5 +1,10 @@
+from datetime import timedelta
+
 from flask import Flask, jsonify, request
+from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+from flask_jwt_extended import (JWTManager, create_access_token, jwt_required,
+                                set_access_cookies)
 from flask_migrate import Migrate
 
 from models import Brand, Racket, Shoes, Shuttlecock, User, db
@@ -7,11 +12,12 @@ from models import Brand, Racket, Shoes, Shuttlecock, User, db
 app = Flask(__name__)
 
 CORS(app)
-
+jwt = JWTManager(app)
+bcrypt = Bcrypt(app)
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:BenCuber%402601@localhost/badminton'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+app.config['JWT_SECRET_KEY'] = 'BenCuber@2002'
 db.init_app(app)
 migrate = Migrate(app, db)  # Initialize Flask-Migrate
 # Create the database tables
@@ -26,19 +32,26 @@ def handle_users():
     if request.method == 'POST':
         # Parse request data
         data = request.get_json()
+        
+        # Hash the password
+        hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+
+        # Create a new user with hashed password
         new_user = User(
             Username=data['username'],
             mail=data['mail'],
             Phonenumber=data['phonenumber'],
-            password=data['password']
+            password=hashed_password  # Store the hashed password
         )
-        # Add to database
+
+        # Add to the database
         db.session.add(new_user)
         db.session.commit()
+
         return jsonify({'message': 'User created successfully'}), 201
 
     elif request.method == 'GET':
-        # Fetch all users
+        # Fetch all users (excluding the password)
         users = User.query.all()
         users_data = [
             {
@@ -49,6 +62,7 @@ def handle_users():
             }
             for user in users
         ]
+
         return jsonify(users_data), 200
 #     # 4. Route for getting a single user by UUID
 # @app.route('/users/<uuid:user_id>', methods=['GET'])
@@ -230,3 +244,28 @@ def handle_shuttlecocks():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+#4. Authentication
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    user = User.query.filter_by(Username=username).first()
+    if not user or not bcrypt.check_password_hash(user.password, password):
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    # Create a JWT token with a 2-hour expiration
+    access_token = create_access_token(identity=user.UserID, expires_delta=timedelta(hours=2))
+
+    # Create a response and set the JWT in an HttpOnly cookie
+    response = jsonify({'msg': 'Login successful'})
+    set_access_cookies(response, access_token)  # Store JWT in HttpOnly cookie
+    return response
+
+# A protected route example
+@app.route('/protected', methods=['GET'])
+@jwt_required()
+def protected():
+    return jsonify({"msg": "You have accessed a protected route"}), 200
