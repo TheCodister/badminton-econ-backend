@@ -3,7 +3,8 @@ from datetime import timedelta
 from flask import Flask, jsonify, request
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
-from flask_jwt_extended import (JWTManager, create_access_token, jwt_required,
+from flask_jwt_extended import (JWTManager, create_access_token,
+                                get_jwt_identity, jwt_required,
                                 set_access_cookies)
 from flask_migrate import Migrate
 
@@ -11,7 +12,7 @@ from models import Brand, Racket, Shoes, Shuttlecock, User, db
 
 app = Flask(__name__)
 
-CORS(app)
+CORS(app, supports_credentials=True)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 # Database configuration
@@ -81,13 +82,21 @@ def handle_users():
 #         return jsonify({'message': 'User not found'}), 404
     
 @app.route('/users/<string:username>', methods=['GET'])
+@jwt_required()  # Protect this route
 def get_user_by_name(username):
+    # Verify if the current user is the one making the request
+    current_user = get_jwt_identity()
+
     # Query the user by Username
     user = User.query.filter_by(Username=username).first()
 
     if user:
+        # Ensure that the user making the request is the same as the one being queried
+        if user.Username != current_user:
+            return jsonify({'message': 'Unauthorized access'}), 403
+
         return jsonify({
-            'UserID': str(user.UserID),  # Convert UUID to string if it's UUID type
+            'UserID': str(user.UserID),  # Convert UUID to string if needed
             'Username': user.Username,
             'mail': user.mail,
             'Phonenumber': user.Phonenumber
