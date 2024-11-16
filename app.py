@@ -111,54 +111,55 @@ def handle_rackets():
     if request.method == 'POST':
         data = request.get_json()
         new_racket = Racket(
-            ProductID=data['product_id'],
-            ProductName=data['product_name'],
-            ImageUrl=data['image_url'],
-            Brand=Brand[data['brand']],
-            Price=data['price'],
-            Description=data['description'],
-            Status=data['status'],
-            Sales=data['sales'],
-            Stock=data['stock'],
-            AvailableLocation=data['available_location'],
-            Line=data['line'],
-            Stiffness=data['stiffness'],
-            Weight=data['weight'],
-            Balance=data['balance'],
-            MaxTension=data['max_tension'],
-            Length=data['length'],
-            Technology=data['technology']
+            product_id=data['product_id'],
+            product_name=data['product_name'],
+            image_url=data['image_url'],
+            brand=Brand[data['brand']],
+            price=data['price'],
+            description=data['description'],
+            status=data['status'],
+            sales=data['sales'],
+            stock=data['stock'],
+            available_location=data['available_location'],
+            line=data['line'],
+            stiffness=data['stiffness'],
+            weight=data['weight'],
+            balance=data['balance'],
+            max_tension=data['max_tension'],
+            length=data['length'],
+            technology=data['technology']
         )
         db.session.add(new_racket)
         db.session.commit()
         return jsonify({'message': 'Racket created successfully'}), 201
 
     elif request.method == 'GET':
-        # Fetch all rackets
         rackets = Racket.query.all()
         rackets_data = [
             {
-                'ProductID': racket.ProductID,
-                'ProductName': racket.ProductName,
-                'ImageUrl': racket.ImageUrl,
-                'Brand': racket.Brand.value,
-                'Price': str(racket.Price),  # Convert decimal to string for JSON compatibility
-                'Description': racket.Description,
-                'Status': racket.Status,
-                'Sales': racket.Sales,
-                'Stock': racket.Stock,
-                'AvailableLocation': racket.AvailableLocation,
-                'Line': racket.Line,
-                'Stiffness': racket.Stiffness,
-                'Weight': racket.Weight,
-                'Balance': racket.Balance,
-                'MaxTension': racket.MaxTension,
-                'Length': str(racket.Length),  # Convert decimal to string for JSON compatibility
-                'Technology': racket.Technology
+                'product_id': racket.product_id,
+                'product_name': racket.product_name,
+                'image_url': racket.image_url,
+                'brand': racket.brand.value,
+                'price': str(racket.price),
+                'description': racket.description,
+                'status': racket.status,
+                'sales': racket.sales,
+                'stock': racket.stock,
+                'available_location': racket.available_location,
+                'line': racket.line,
+                'stiffness': racket.stiffness,
+                'weight': racket.weight,
+                'balance': racket.balance,
+                'max_tension': racket.max_tension,
+                'length': str(racket.length),
+                'technology': racket.technology
             }
             for racket in rackets
         ]
         return jsonify(rackets_data), 200
+
+
 
 
 @app.route('/shoes', methods=['GET', 'POST'])

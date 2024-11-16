@@ -1,12 +1,11 @@
 import uuid
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import JSON, UUID
+from enum import Enum as PyEnum
 
 db = SQLAlchemy()
 
 # Brand Enum
-from enum import Enum as PyEnum
-
 class Brand(PyEnum):
     LINING = 'Lining'
     YONEX = 'Yonex'
@@ -23,7 +22,7 @@ class Brand(PyEnum):
 # User Model
 class User(db.Model):
     __tablename__ = 'users'
-    __abstract__ = True  # This makes it an abstract base class
+    __abstract__ = True  # Abstract base class
 
     user_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = db.Column(db.String(100), nullable=False)
@@ -40,13 +39,13 @@ class Customer(User):
 class Admin(User):
     __tablename__ = 'admins'
 
-    branch_id = db.Column(db.String(100), nullable=False)
-    branch_name = db.Column(db.String(100), nullable=False)
+    branch_id = db.Column(db.String(100), db.ForeignKey('branches.branch_id'), nullable=False)  # Add FK
+    branch = db.relationship('Branch', back_populates='admins')  # Corrected relationship
 
 # Product Base Model
 class Product(db.Model):
     __tablename__ = 'products'
-    __abstract__ = True  # This makes it an abstract base class
+    __abstract__ = True
 
     product_id = db.Column(db.String(100), primary_key=True)
     image_url = db.Column(db.String(255), nullable=False)
@@ -104,7 +103,7 @@ class Branch(db.Model):
     branch_name = db.Column(db.String(100), nullable=False)
     branch_address = db.Column(db.Text, nullable=False)
     branch_phone = db.Column(db.String(15), nullable=False)
-    admins = db.relationship('Admin', backref='branch', lazy=True)
+    admins = db.relationship('Admin', back_populates='branch', lazy=True)  # Corrected relationship
 
 class ShoppingCart(db.Model):
     __tablename__ = 'shopping_carts'
@@ -118,5 +117,13 @@ class CartItem(db.Model):
 
     item_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cart_id = db.Column(UUID(as_uuid=True), db.ForeignKey('shopping_carts.cart_id'), nullable=False)
+    product_id = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+
+class OrderItem(db.Model):
+    __tablename__ = 'order_items'
+
+    item_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = db.Column(UUID(as_uuid=True), db.ForeignKey('orders.order_id'), nullable=False)
     product_id = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
