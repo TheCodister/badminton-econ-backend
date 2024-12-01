@@ -7,8 +7,9 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 get_jwt_identity, jwt_required,
                                 set_access_cookies)
 from flask_migrate import Migrate
+from werkzeug.security import check_password_hash
 
-from models import Brand, Racket, Shoes, Shuttlecock, User, db
+from models import Brand, Racket, Shoes, Shuttlecock, User, Customer, Admin, db
 
 app = Flask(__name__)
 
@@ -28,58 +29,90 @@ with app.app_context():
 # Models (same as before, assuming they are defined here)
 
 # 2. Routes for User Model
-@app.route('/users', methods=['GET', 'POST'])
+@app.route('/users', methods=['POST', 'GET'])
 def handle_users():
     if request.method == 'POST':
-        # Parse request data
         data = request.get_json()
-        
-        # Hash the password
-        hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-
-        # Create a new user with hashed password
         new_user = User(
-            Username=data['username'],
+            username=data['username'],
             mail=data['mail'],
-            Phonenumber=data['phonenumber'],
-            password=hashed_password  # Store the hashed password
+            phone_number=data['phone_number'],
+            password=bcrypt.generate_password_hash(data['password']).decode('utf-8')
         )
-
-        # Add to the database
         db.session.add(new_user)
         db.session.commit()
-
         return jsonify({'message': 'User created successfully'}), 201
 
     elif request.method == 'GET':
-        # Fetch all users (excluding the password)
         users = User.query.all()
         users_data = [
             {
-                'UserID': user.UserID,
-                'Username': user.Username,
+                'user_id': str(user.user_id),  # Convert UUID to string if needed
+                'username': user.username,
                 'mail': user.mail,
-                'Phonenumber': user.Phonenumber,
+                'phone_number': user.phone_number
             }
             for user in users
         ]
-
         return jsonify(users_data), 200
-#     # 4. Route for getting a single user by UUID
-# @app.route('/users/<uuid:user_id>', methods=['GET'])
-# def get_user(user_id):
-#     # Query the user by UUID
-#     user = User.query.filter_by(UserID=user_id).first()
 
-#     if user:
-#         return jsonify({
-#             'UserID': user.UserID,
-#             'Username': user.Username,
-#             'mail': user.mail,
-#             'Phonenumber': user.Phonenumber
-#         }), 200
-#     else:
-#         return jsonify({'message': 'User not found'}), 404
+@app.route('/register/<string:role>', methods=['POST'])
+def register_user(role):
+    data = request.get_json()
+
+    # Hash the password
+    hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+
+    if role.lower() == 'customer':
+        # Create a new Customer
+        new_user = Customer(
+            username=data['username'],
+            mail=data['mail'],
+            phone_number=data['phone_number'],
+            password=hashed_password,
+            address=data['address']  # Customer-specific field
+        )
+    elif role.lower() == 'admin':
+        # Create a new Admin
+        new_user = Admin(
+            username=data['username'],
+            mail=data['mail'],
+            phone_number=data['phone_number'],
+            password=hashed_password,
+            branch_id=data['branch_id']  # Admin-specific field
+        )
+    else:
+        return jsonify({'error': 'Invalid role. Choose either "customer" or "admin".'}), 400
+
+    # Add the user to the database
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': f'{role.capitalize()} registered successfully.'}), 201
+
+
+@app.route('/users/<uuid:userid>', methods=['GET'])
+@jwt_required()  # Protect this route
+def get_user_by_id(userid):
+    # Verify if the current user is the one making the request
+    current_user = get_jwt_identity()
+
+    # Query the user by UserID
+    user = User.query.filter_by(UserID=userid).first()
+
+    if user:
+        # Ensure that the user making the request is the same as the one being queried
+        if user.UserID != current_user:
+            return jsonify({'message': 'Unauthorized access'}), 403
+
+        return jsonify({
+            'UserID': str(user.UserID),  # Convert UUID to string if needed
+            'Username': user.Username,
+            'mail': user.mail,
+            'Phonenumber': user.Phonenumber
+        }), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404
     
 @app.route('/users/<string:username>', methods=['GET'])
 @jwt_required()  # Protect this route
@@ -105,6 +138,23 @@ def get_user_by_name(username):
         return jsonify({'message': 'User not found'}), 404
 
 # 3. Routes for Product Models (Racket, Shoes, Shuttlecock)
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(mail=data['mail']).first()
+
+    if user and check_password_hash(user.password, data['password']):
+        # Create an access token
+        access_token = create_access_token(identity=user.mail, expires_delta=timedelta(days=1))
+
+        # Set the access token as a cookie
+        resp = jsonify({'login': True})
+        set_access_cookies(resp, access_token)
+
+        return resp, 200
+    else:
+        return jsonify({'login': False}), 401
 
 @app.route('/rackets', methods=['GET', 'POST'])
 def handle_rackets():
@@ -158,6 +208,35 @@ def handle_rackets():
             for racket in rackets
         ]
         return jsonify(rackets_data), 200
+
+@app.route('/rackets/<string:id>', methods=["GET"])
+def get_racket_by_id(id):
+    # Query the racket by product_id
+    racket = Racket.query.filter_by(product_id=id).first()
+    
+    if racket:
+        racket_data = {
+            'product_id': racket.product_id,
+            'product_name': racket.product_name,
+            'image_url': racket.image_url,
+            'brand': racket.brand.value,
+            'price': str(racket.price),
+            'description': racket.description,
+            'status': racket.status,
+            'sales': racket.sales,
+            'stock': racket.stock,
+            'available_location': racket.available_location,
+            'line': racket.line,
+            'stiffness': racket.stiffness,
+            'weight': racket.weight,
+            'balance': racket.balance,
+            'max_tension': racket.max_tension,
+            'length': str(racket.length),
+            'technology': racket.technology
+        }
+        return jsonify(racket_data), 200
+    else:
+        return jsonify({'error': 'Racket not found'}), 404
 
 
 
@@ -254,25 +333,6 @@ def handle_shuttlecocks():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-#4. Authentication
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-
-    user = User.query.filter_by(Username=username).first()
-    if not user or not bcrypt.check_password_hash(user.password, password):
-        return jsonify({"msg": "Bad username or password"}), 401
-
-    # Create a JWT token with a 2-hour expiration
-    access_token = create_access_token(identity=user.UserID, expires_delta=timedelta(hours=2))
-
-    # Create a response and set the JWT in an HttpOnly cookie
-    response = jsonify({'msg': 'Login successful'})
-    set_access_cookies(response, access_token)  # Store JWT in HttpOnly cookie
-    return response
 
 # A protected route example
 @app.route('/protected', methods=['GET'])
