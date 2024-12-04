@@ -139,22 +139,56 @@ def get_user_by_name(username):
 
 # 3. Routes for Product Models (Racket, Shoes, Shuttlecock)
 
-@app.route('/login', methods=['POST'])
+# @app.route('/login', methods=['POST'])
+# def login():
+#     data = request.get_json()
+#     user = User.query.filter_by(mail=data['mail']).first()
+
+#     if user and check_password_hash(user.password, data['password']):
+#         # Create an access token
+#         access_token = create_access_token(identity=user.mail, expires_delta=timedelta(days=1))
+
+#         # Set the access token as a cookie
+#         resp = jsonify({'login': True})
+#         set_access_cookies(resp, access_token)
+
+#         return resp, 200
+#     else:
+#         return jsonify({'login': False}), 401
+@app.route('/auth/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    user = User.query.filter_by(mail=data['mail']).first()
+    try:
+        data = request.get_json()
+        print('Received data:', data)
+        
+        email = data.get('email')
+        password = data.get('password')
+        print('Extracted email:', email)
+        print('Extracted password:', password)
 
-    if user and check_password_hash(user.password, data['password']):
-        # Create an access token
-        access_token = create_access_token(identity=user.mail, expires_delta=timedelta(days=1))
+        # Validate credentials logic...
+        if not email or not password:
+            return jsonify({"message": "Missing email or password"}), 400
+        
+        # Check user existence and validate password...
+        user = Customer.query.filter_by(mail=email).first()
+        print('User found:', user, user.password, password)
+        if user and bcrypt.check_password_hash(user.password, password):  # Using bcrypt to check password
+            return jsonify({
+                "user_id": str(user.user_id),
+                "username": user.username,
+                "mail": user.mail,
+                "phone_number": user.phone_number
+            })
+        else:
+            return jsonify({"message": "Invalid credentials"}), 401
+    except Exception as e:
+        print('Error:', e)
+        return jsonify({"message": "An error occurred"}), 500
 
-        # Set the access token as a cookie
-        resp = jsonify({'login': True})
-        set_access_cookies(resp, access_token)
 
-        return resp, 200
-    else:
-        return jsonify({'login': False}), 401
+
+
 
 @app.route('/rackets', methods=['GET', 'POST'])
 def handle_rackets():
