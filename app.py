@@ -186,7 +186,11 @@ def login():
         print('Error:', e)
         return jsonify({"message": "An error occurred"}), 500
 
-
+@app.route('/auth/protected', methods=['GET'])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify({"logged_in_as": current_user}), 200
 
 
 
@@ -367,9 +371,3 @@ def handle_shuttlecocks():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-# A protected route example
-@app.route('/protected', methods=['GET'])
-@jwt_required()
-def protected():
-    return jsonify({"msg": "You have accessed a protected route"}), 200
