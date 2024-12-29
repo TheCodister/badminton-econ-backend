@@ -6,6 +6,7 @@ rackets_bp = Blueprint('rackets', __name__)
 @rackets_bp.route('/', methods=['GET', 'POST'])
 def handle_rackets():
     if request.method == 'POST':
+        # Handle POST as before
         data = request.get_json()
         new_racket = Racket(
             product_id=data['product_id'],
@@ -31,7 +32,32 @@ def handle_rackets():
         return jsonify({'message': 'Racket created successfully'}), 201
 
     elif request.method == 'GET':
-        rackets = Racket.query.all()
+        # Extract query parameters
+        brand = request.args.get('brand')  # e.g., "lining,yonex"
+        weight = request.args.get('weight')  # e.g., "3U,4U"
+        balance = request.args.get('balance')  # e.g., "head heavy,head light"
+        stiffness = request.args.get('stiffness')  # e.g., "hard,medium"
+
+        # Build the query dynamically
+        query = Racket.query
+
+        if brand:
+            brand_values = [Brand[b.upper()] for b in brand.split(',') if b.upper() in Brand.__members__]
+            query = query.filter(Racket.brand.in_(brand_values))
+        if weight:
+            weight_values = [w.strip() for w in weight.split(',')]
+            query = query.filter(db.or_(*(Racket.weight.ilike(f"%{w}%") for w in weight_values)))
+        if balance:
+            balance_values = [b.strip().lower() for b in balance.split(',')]
+            query = query.filter(db.or_(*(Racket.balance.ilike(f"%{b}%") for b in balance_values)))
+        if stiffness:
+            stiffness_values = [s.strip().lower() for s in stiffness.split(',')]
+            query = query.filter(db.or_(*(Racket.stiffness.ilike(f"%{s}%") for s in stiffness_values)))
+
+        # Execute the query
+        rackets = query.all()
+
+        # Serialize the results
         rackets_data = [
             {
                 'product_id': racket.product_id,
@@ -54,6 +80,7 @@ def handle_rackets():
             }
             for racket in rackets
         ]
+
         return jsonify(rackets_data), 200
 
 

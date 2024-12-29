@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import Shoes, db
+from models import Shoes,Brand, db
 
 shoes_bp = Blueprint('shoes', __name__)
 
@@ -10,7 +10,7 @@ def handle_shoes():
         new_shoes = Shoes(
             product_id=data['product_id'],
             product_name=data['product_name'],
-            brand=data['brand'],
+            brand=Brand[data['brand']],
             price=data['price'],
             description=data['description'],
             status=data['status'],
